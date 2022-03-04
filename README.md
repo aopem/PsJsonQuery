@@ -10,7 +10,7 @@ This class functions similarly to jq for windows, but with a few differences:
   a `Save()` call is completed.
 - Square brackets "[]" are optional in queries involving arrays or array elements.
 - Cannot currently perform queries similar to `.json.query.array[].property` to get a list of all "property" values in "array".
-  Instead must use something like `$PJson.Query(.json.query.array[]) | ConvertFrom-Json | Select-Object -Property property`.
+  Instead must use something like `$PJson.Query(".json.query.array[]") | ConvertFrom-Json | Select-Object -Property property`.
 - Queries output in JSON format, so `ConvertFrom-Json` should be used before doing any object manipulation.
 
 ##### Example Usage Cases
