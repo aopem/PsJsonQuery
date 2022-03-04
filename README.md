@@ -9,8 +9,8 @@ This class functions similarly to jq for windows, but with a few differences:
 - Changes made using `SetPath()` can be seen immediately if calling the `Paths()` function, but will not be outputted to a file until
   a `Save()` call is completed.
 - Square brackets "[]" are optional in queries involving arrays or array elements.
-- Cannot currently perform queries similar to `.json.query.array[].property` to get a list of property names. Instead
-  must use something like `$PJson.Query(.json.query.array[].property) | ConvertFrom-Json | Select-Object -Property property`.
+- Cannot currently perform queries similar to `.json.query.array[].property` to get a list of all "property" values in "array".
+  Instead must use something like `$PJson.Query(.json.query.array[]) | ConvertFrom-Json | Select-Object -Property property`.
 - Queries output in JSON format, so `ConvertFrom-Json` should be used before doing any object manipulation.
 
 ##### Example Usage Cases
