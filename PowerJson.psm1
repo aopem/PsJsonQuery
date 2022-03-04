@@ -7,23 +7,23 @@ class PowerJson
         When querying for array elements, square brackets are optional. Queries can use
         ".array.query.0" or ".array.query[0]" format.
     .EXAMPLE
-        # executing queries on anf-settings.json
-        $Jq = [PowerJson]::new("anf-settings.json")
-        $Environment = $Jq.Query(".cloudType.AzureCloud.Prod.environments[1]")
-        $AzureCloud = $Jq.Query(".cloudType.AzureCloud")
+        # executing queries on an example.json
+        $PJson = [PowerJson]::new("example.json")
+        $Array = $PJson.Query(".root.array[1]")
+        $LeafNode = $PJson.Query(".root.leafNode")
 
         # get hashtable of leaf node paths (hasthable keys) and their values (hashtable values)
-        $PathsHashtable = $Jq.Paths()
+        $PathsHashtable = $PJson.Paths()
 
-        # set a path and then save change to an output file called "anf-settings.modified.json"
-        # the path being set must already exist in anf-settings.json for success
-        $Jq.SetPath(".my.path.here", "newValue")
-        $Jq.Save("anf-settings.modified.json")
+        # set a path and then save change to an output file called "example.modified.json"
+        # the path being set must already exist in example.json for success
+        $PJson.SetPath(".my.path.here", "newValue")
+        $PJson.Save("example.modified.json")
     .NOTES
         JSON is output in a different order than the input, which is why save typically
         uses a different output file from the same input file.
 
-        Warnings from functions can be surpressed by setting $Jq.SupressWarning = $true.
+        Warnings from functions can be surpressed by setting $PJson.SupressWarning = $true.
     #>
 
     [bool] $SuppressWarning = $false
@@ -55,7 +55,7 @@ class PowerJson
         .PARAMETER QueryPath
             Path to query in same format as a typical jq query format (".field1.field2.field3")
         .EXAMPLE
-            $EnvironmentJSON = $Jq.Query(".cloudType.AzureCloud.Prod.environments[0]")
+            $EnvironmentJSON = $PJson.Query(".root.array[0]")
         #>
 
         $KeyString = $this.GetKeyString($QueryPath)
@@ -67,13 +67,9 @@ class PowerJson
         }
         catch
         {
-            if ($this.SuppressWarning)
+            if (-not $this.SuppressWarning)
             {
-                Write-Log -InvocationObj $MyInvocation -Message "Cannot query $QueryPath when it does not already exist in `"$($this.JsonFilePath)`"" -Severity Warn -NoConsole
-            }
-            else
-            {
-                Write-Log -InvocationObj $MyInvocation -Message "Cannot query $QueryPath when it does not already exist in `"$($this.JsonFilePath)`"" -Severity Warn
+                Write-Verbose -Verbose "Cannot query $QueryPath when it does not already exist in `"$($this.JsonFilePath)`""
             }
         }
         return $Value | ConvertTo-Json -Depth 99
@@ -91,10 +87,10 @@ class PowerJson
         .PARAMETER Value
             Value to set $QueryPath to
         .EXAMPLE
-            $Success = $Jq.SetPath(".cloudType.AzureCloud.Prod.environments[0].faultDomains", 0)
+            $Success = $PJson.SetPath(".root.array[0].faultDomains", 0)
             if ($Success)
             {
-                $Jq.Save("anf-settings.modified.json")
+                $PJson.Save("example.modified.json")
             }
         #>
 
@@ -111,13 +107,9 @@ class PowerJson
         }
         catch
         {
-            if ($this.SuppressWarning)
+            if (-not $this.SuppressWarning)
             {
-                Write-Log -InvocationObj $MyInvocation -Message "Cannot set $QueryPath when it does not already exist in `"$($this.JsonFilePath)`"" -Severity Warn -NoConsole
-            }
-            else
-            {
-                Write-Log -InvocationObj $MyInvocation -Message "Cannot set $QueryPath when it does not already exist in `"$($this.JsonFilePath)`"" -Severity Warn
+                Write-Verbose -Verbose "Cannot set $QueryPath when it does not already exist in `"$($this.JsonFilePath)`""
             }
             return $false
         }
@@ -137,11 +129,11 @@ class PowerJson
                 }
             }
             this hashtable would contain the following key/value pairs:
-            $this.PathsHashtable[.root.leafnode0] = "myValue"
-            $this.PathsHashtable[.root.leafnode1] = 0
+            $this.PathsHashtable[".root.leafnode0"] = "myValue"
+            $this.PathsHashtable["".root.leafnode1"] = 0
         .EXAMPLE
             # add 1 to all integer values in hashtable
-            $PathsHashtable = $Jq.Paths()
+            $PathsHashtable = $PJson.Paths()
             foreach ($Path in $PathsHashtable.Keys)
             {
                 if ($PathsHashtable[$Path] -is [int])
@@ -164,10 +156,10 @@ class PowerJson
         .PARAMETER OutputFilePath
             Path to output $this.JsonHashtable as JSON to
         .EXAMPLE
-            $Success = $Jq.SetPath(".cloudType.AzureCloud.Prod.environments[0].faultDomains", 0)
+            $Success = $PJson.SetPath(".root.array[0].property", 0)
             if ($Success)
             {
-                $Jq.Save("anf-settings.modified.json")
+                $PJson.Save("example.modified.json")
             }
         .NOTES
             $this.JsonHashtable is unordered so the output will contain all the same inputs/any updates
