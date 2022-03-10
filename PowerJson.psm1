@@ -4,15 +4,15 @@ class PowerJson
     .DESCRIPTION
         Mimic jq functionality natively with PowerShell for instances when jq cannot be used.
         Supports basic jq queries in the same format as a normal jq query (ex: ".field1.field2.field3").
-        When querying for array elements, square brackets are optional. Queries can use
-        ".array.query.0" or ".array.query[0]" format.
+        When querying for array elements, square brackets are required. Queries should use
+        ".array.query[0]" format.
     .EXAMPLE
         # executing queries on an example.json
         $PJson = [PowerJson]::new("example.json")
         $Array = $PJson.Query(".root.array[1]")
         $LeafNode = $PJson.Query(".root.leafNode")
 
-        # get hashtable of leaf node paths (hasthable keys) and their values (hashtable values)
+        # get hashtable of leaf node paths (hashtable keys) and their values (hashtable values)
         $PathsHashtable = $PJson.Paths()
 
         # set a path and then save change to an output file called "example.modified.json"
@@ -50,20 +50,23 @@ class PowerJson
         <#
         .DESCRIPTION
             Returns JSON result of a query. Queries should be in the same format as a
-            typical jq query, ex: ".field1.field2.field3". Brackets ("[", "]"") are optional
-            since this class only uses them as delimiters (similar to ".").
+            typical jq query, ex: ".field1.field2.field3". When accessing an array element
+            directly, use [$index], such as in the example. Additionally, arrays can be filtered
+            using a property in a query like ".cloudType.AzureCloud.Prod.environments[].environment"
+            or ".cloudType.AzureCloud.Prod.environments.environment" - this is the only
+            case when square brackets ([]) are optional.
         .PARAMETER QueryPath
             Path to query in same format as a typical jq query format (".field1.field2.field3")
         .EXAMPLE
             $EnvironmentJSON = $PJson.Query(".root.array[0]")
         #>
 
-        $KeyString = $this.GetKeyString($QueryPath)
+        $PropertyPath = $this.ParseQueryPath($QueryPath)
 
         $Value = ""
         try
         {
-            $Value = Invoke-Expression "`$this.JsonHashtable$KeyString"
+            $Value = Invoke-Expression "`$this.JsonHashtable$PropertyPath"
         }
         catch
         {
@@ -99,11 +102,11 @@ class PowerJson
         {
             $Value = '"' + $Value + '"'
         }
-        $KeyString = $this.GetKeyString($QueryPath)
+        $PropertyPath = $this.ParseQueryPath($QueryPath)
 
         try
         {
-            Invoke-Expression "`$this.JsonHashtable$KeyString = $Value"
+            Invoke-Expression "`$this.JsonHashtable$PropertyPath = $Value"
         }
         catch
         {
@@ -183,7 +186,7 @@ class PowerJson
             they are traversed to continue the DFS until leaf nodes are reached.
 
             The Path to each key is constructed with each function call by adding the key every time in
-            Path + ".Key" format and appending the index ($Path + ".index") when necessary.
+            Path + ".Key" format and appending the index ($Path + "[$index]") when necessary.
         .PARAMETER JsonHashtable
             Hashtable that is being traversed to find paths to leaf nodes, leaf node values
         .PARAMETER Path
@@ -206,7 +209,7 @@ class PowerJson
                 {
                     for ($i = 0; $i -lt $Value.Length; $i++)
                     {
-                        $IndexedPath = $NextPath + "." + $i
+                        $IndexedPath = $NextPath + "[$i]"
                         if ($Value[$i] -is [hashtable])
                         {
                             $NextHashtable = $Value[$i]
@@ -252,13 +255,12 @@ class PowerJson
         return $false
     }
 
-    [string] hidden GetKeyString([string]$QueryPath)
+    [string] hidden ParseQueryPath([string]$QueryPath)
     {
         <#
         .DESCRIPTION
-            Parses $QueryPath using ".", "[", "]" as delimiters. Then, returns the Keys in the format
-            of "["Key1"]["Key2"]["Key3"]", which is used to access elements of $this.JsonHashtable for
-            other functions.
+            Remove any instances of [], and otherwise use $QueryPath to directly to access
+            hashtable elements.
         .PARAMETER QueryPath
             Path to parse for key values
         #>
@@ -267,14 +269,13 @@ class PowerJson
         {
             throw "Query `"$QueryPath`" must start with a `".`""
         }
-
-        # split on '.', '[', or ']' characters and remove empty/whitespace objects
-        $Keys = $QueryPath -split { $_ -eq "." -or  $_ -eq "[" -or $_ -eq "]" } | Where-Object { $_ }
-        for ($i = 0; $i -lt $Keys.Length; $i++)
+        elseif ($QueryPath -eq ".")
         {
-            $Keys[$i] = "[`"" + $Keys[$i] + "`"]"
+            return ""
         }
-
-        return $Keys -join ""
+        else
+        {
+            return $QueryPath.Replace("[]", "")
+        }
     }
 }

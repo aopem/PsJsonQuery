@@ -8,14 +8,13 @@ This class functions similarly to jq for windows, but with a few differences:
   in a different file.
 - Changes made using `SetPath()` can be seen immediately if calling the `Paths()` function, but will not be outputted to a file until
   a `Save()` call is completed.
-- Square brackets "[]" are optional in queries involving arrays or array elements.
-- Cannot currently perform queries similar to `.json.query.array[].property` to get a list of all "property" values in "array".
-  Instead must use something like `$PJson.Query(".json.query.array[]") | ConvertFrom-Json | Select-Object -Property property`.
-- Queries output in JSON format, so `ConvertFrom-Json` should be used before doing any object manipulation.
+- Square brackets "[]" are optional in a query returning an array (i.e. `.json.query.array[].property`) can also be `.json.query.array.property`.
+- Queries output in JSON format, so `ConvertFrom-Json` should be used before doing any object manipulation after a query.
 
-##### Example Usage Cases
+## Example Usage Cases
 
 Using sample JSON for `example.json`:
+
 ```json
 {
     "root": {
@@ -26,7 +25,8 @@ Using sample JSON for `example.json`:
                 "property": "value"
             },
             {
-                "arrayInt": 100
+                "arrayInt": 100,
+                "property": "anotherValue"
             }
         ]
     }
@@ -79,10 +79,7 @@ $PJson.Query($Query)
 Obtain an array element:
 
 ```PowerShell
-$Query = ".root.array[0]"
-# or
-$Query = ".root.array.0"
-$PJson.Query($Query)
+$PJson.Query(".root.array[0]")
 ```
 
 **Returns**:
@@ -128,6 +125,24 @@ $property = $PJson.Query($Query) | ConvertFrom-Json | Where-Object -Property pro
 }
 ```
 
+Filter array elements by property:
+
+```PowerShell
+$Query = ".root.array.property"
+# or
+$Query = ".root.array[].property"
+$Property = $Jq.Query($Query)
+```
+
+**Returns**:
+
+```json
+[
+    "value",
+    "anotherValue"
+]
+```
+
 Obtain paths to all leaf nodes, value of each leaf node in a hashtable:
 
 ```PowerShell
@@ -138,9 +153,10 @@ $PathsHashtable = $PJson.Paths()
 
 ```PowerShell
 $PathsHashtable[".root.leaf"] = "leafValue"
-$PathsHashtable[".root.array.0.arrayLeaf"] = "arrayLeafValue"
-$PathsHashtable[".root.array.0.property"] = "value"
-$PathsHashtable[".root.array.1.arrayInt"] = 100
+$PathsHashtable[".root.array[0].arrayLeaf"] = "arrayLeafValue"
+$PathsHashtable[".root.array[0].property"] = "value"
+$PathsHashtable[".root.array[1].arrayInt"] = 100
+$PathsHashtable[".root.array[1].property"] = "anotherValue"
 ```
 
 Change the value of a path, then get updated JSON:
@@ -162,7 +178,8 @@ $PJson.Save("file.modified.json")
                 "property": "value"
             },
             {
-                "arrayInt": 100
+                "arrayInt": 100,
+                "property": "anotherValue
             }
         ]
     }
