@@ -179,7 +179,7 @@ $PJson.Save("file.modified.json")
             },
             {
                 "arrayInt": 100,
-                "property": "anotherValue
+                "property": "anotherValue"
             }
         ]
     }
