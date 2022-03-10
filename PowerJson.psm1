@@ -175,11 +175,8 @@ class PowerJson
         .PARAMETER OutputFilePath
             Path to output $this.JsonHashtable as JSON to
         .EXAMPLE
-            $Success = $PJson.SetPath(".root.array[0].property", 0)
-            if ($Success)
-            {
-                $PJson.Save("example.modified.json")
-            }
+            $PJson.SetPath(".root.array[0].property", 0)
+            $PJson.Save("example.modified.json")
         .NOTES
             $this.JsonHashtable is unordered so the output will contain all the same inputs/any updates
             that have been made using SetPath() or manually, but will be formatted differently. So, while
