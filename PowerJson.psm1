@@ -23,10 +23,12 @@ class PowerJson
         JSON is output in a different order than the input, which is why save typically
         uses a different output file from the same input file.
 
-        Warnings from functions can be surpressed by setting $PJson.SupressWarning = $true.
+        Errors from functions can be ignored by setting $PJson.IgnoreError = $true.
+        Error/warning message output can be ignored by setting $PJson.IgnoreOutput = $true.
     #>
 
-    [bool] $SuppressWarning = $false
+    [bool] $IgnoreError = $false
+    [bool] $IgnoreOutput = $false
     [string] hidden $JsonFilePath = [string]::Empty
     [hashtable] hidden $JsonHashtable = $null
     [hashtable] hidden $PathsHashtable = $null
@@ -41,6 +43,12 @@ class PowerJson
             # implemented in PowerShell 5, etc. to emulate -AsHashtable argument's
             # functionality
         }
+
+        if (-not (Test-Path $JsonFilePath))
+        {
+            throw "Error: $JsonFilePath is not a valid file path"
+        }
+
         $this.JsonFilePath = $JsonFilePath
         $this.JsonHashtable = Get-Content $JsonFilePath | ConvertFrom-Json -AsHashtable
     }
@@ -52,13 +60,12 @@ class PowerJson
             Returns JSON result of a query. Queries should be in the same format as a
             typical jq query, ex: ".field1.field2.field3". When accessing an array element
             directly, use [$index], such as in the example. Additionally, arrays can be filtered
-            using a property in a query like ".cloudType.AzureCloud.Prod.environments[].environment"
-            or ".cloudType.AzureCloud.Prod.environments.environment" - this is the only
-            case when square brackets ([]) are optional.
+            using a property in a query like ".root.array[].property" or ".root.array.property"
+            - this is the only case when square brackets ([]) are optional.
         .PARAMETER QueryPath
-            Path to query in same format as a typical jq query format (".field1.field2.field3")
+            Path to query in same format as a typical jq query (".field1.field2.field3")
         .EXAMPLE
-            $EnvironmentJSON = $PJson.Query(".root.array[0]")
+            $ArrayJSON = $PJson.Query(".root.array[0]")
         #>
 
         $PropertyPath = $this.ParseQueryPath($QueryPath)
@@ -70,9 +77,16 @@ class PowerJson
         }
         catch
         {
-            if (-not $this.SuppressWarning)
+            $ErrorMessage = "Cannot query $QueryPath when it does not already exist in `"$($this.JsonFilePath)`""
+
+            if (-not $this.IgnoreOutput)
             {
-                Write-Verbose -Verbose "Cannot query $QueryPath when it does not already exist in `"$($this.JsonFilePath)`""
+                Write-Verbose -Verbose $ErrorMessage
+            }
+
+            if (-not $this.IgnoreError)
+            {
+                throw $ErrorMessage
             }
         }
         return $Value | ConvertTo-Json -Depth 99
@@ -90,11 +104,8 @@ class PowerJson
         .PARAMETER Value
             Value to set $QueryPath to
         .EXAMPLE
-            $Success = $PJson.SetPath(".root.array[0].faultDomains", 0)
-            if ($Success)
-            {
-                $PJson.Save("example.modified.json")
-            }
+            $PJson.SetPath(".root.array[0].faultDomains", 0)
+            $PJson.Save("example.modified.json")
         #>
 
         # add quotes if string
@@ -110,13 +121,18 @@ class PowerJson
         }
         catch
         {
-            if (-not $this.SuppressWarning)
+            $ErrorMessage = "Cannot set $QueryPath when it does not already exist in `"$($this.JsonFilePath)`""
+
+            if (-not $this.IgnoreOutput)
             {
-                Write-Verbose -Verbose "Cannot set $QueryPath when it does not already exist in `"$($this.JsonFilePath)`""
+                Write-Verbose -Verbose $ErrorMessage
             }
-            return $false
+
+            if (-not $this.IgnoreError)
+            {
+                throw $ErrorMessage
+            }
         }
-        return $true
     }
 
     [hashtable] Paths()
