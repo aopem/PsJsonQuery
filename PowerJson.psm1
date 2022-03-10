@@ -92,7 +92,7 @@ class PowerJson
         return $Value | ConvertTo-Json -Depth 99
     }
 
-    [bool] SetPath([string]$QueryPath, $Value)
+    [void] SetPath([string]$QueryPath, $Value)
     {
         <#
         .DESCRIPTION
