@@ -30,27 +30,18 @@ class PowerJson
     [bool] $IgnoreError = $false
     [bool] $IgnoreOutput = $false
     [string] hidden $JsonFilePath = [string]::Empty
-    [hashtable] hidden $JsonHashtable = $null
+    [hashtable] hidden $JsonHashtable = [Ordered]@{}
     [hashtable] hidden $PathsHashtable = $null
 
     PowerJson([string]$JsonFilePath)
     {
-        if ($global:PSVersionTable.PSVersion.Major -lt 7)
-        {
-            throw "Error: PowerJson only works with PowerShell 7 and above"
-            # ConvertFrom-Json -AsHashtable switch argument is reason this is not
-            # compatible with versions < 7. This can be bypassed if a method is
-            # implemented in PowerShell 5, etc. to emulate -AsHashtable argument's
-            # functionality
-        }
-
         if (-not (Test-Path $JsonFilePath))
         {
             throw "Error: $JsonFilePath is not a valid file path"
         }
 
         $this.JsonFilePath = $JsonFilePath
-        $this.JsonHashtable = Get-Content $JsonFilePath | ConvertFrom-Json -AsHashtable
+        $this.JsonHashtable = ConvertPSObjectToHashtable -InputObject (Get-Content $JsonFilePath | ConvertFrom-Json)
     }
 
     [string] Query([string]$QueryPath)
@@ -291,4 +282,56 @@ class PowerJson
             return $QueryPath.Replace("[]", "")
         }
     }
+}
+
+function ConvertPSObjectToHashtable
+{
+    <#
+    .DESCRIPTION
+        Modified from https://stackoverflow.com/questions/40495248/create-hashtable-from-json
+        answer by "Esten Rye". Will convert a PowerShell object (ex. JSON text converted to an
+        object using ConvertTo-Json) to a hashtable. If using PowerShell 7+, use:
+        ConvertTo-Json -AsHashtable
+    .PARAMETER InputObject
+        A PowerShell object (ex. JSON object obtained using ConvertFrom-Json cmdlet)
+    .EXAMPLE
+        $Hashtable = ConvertPSObjectToHashtable -InputObject (Get-Content $File | ConvertFrom-Json)
+    #>
+    param
+    (
+        [Parameter(Mandatory=$true)]
+        [Object]$InputObject
+    )
+
+    $Result = $null
+    if ($InputObject -is [System.Management.Automation.PSCustomObject])
+    {
+        $Result = [Ordered]@{}
+        foreach ($Property in $InputObject.PSObject.Properties)
+        {
+            $Result[$Property.Name] = ConvertPSObjectToHashtable -InputObject $Property.Value
+        }
+    }
+    elseif ($InputObject -is [System.Object[]] -and $InputObject.Count -gt 1)
+    {
+        $List = [System.Collections.ArrayList]::new()
+        foreach ($Element in $InputObject)
+        {
+            $List.Add((ConvertPSObjectToHashtable -InputObject $Element)) | Out-Null
+        }
+        $Result = $List
+    }
+    elseif ($InputObject -is [System.Object[]] -and $InputObject.Count -le 1)
+    {
+        # special case for 1 and 0 element arrays - PowerShell will enumerate these objects
+        # despite their [System.Object[]] type and create incorrect JSON when converting back
+        # to JSON, which is why these values must be saved as shown below
+        $Result = , @($InputObject)
+    }
+    else
+    {
+        $Result = $InputObject
+    }
+
+    return $Result
 }

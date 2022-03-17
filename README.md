@@ -3,9 +3,8 @@
 The PowerJson class can be used when working on a system that does not support jq for windows, but jq support is necessary or helpful.
 This class functions similarly to jq for windows, but with a few differences:
 
-- Requires PowerShell 7+ because it uses `ConvertFrom-Json -AsHashtable`.
-- PowerJson uses an unordered hashtable, so output JSON from `Save()` is usually **NOT** in the same format as input JSON. This is why output is usually saved
-  in a different file.
+- While PowerJson does use an ordered hashtable internally, output JSON from `Save()` is usually **NOT** in the same format as input JSON
+  and will be out of order at the topmost level. This is why output is usually saved in a different file from the input file.
 - Changes made using `SetPath()` can be seen immediately if calling the `Paths()` function, but will not be outputted to a file until
   a `Save()` call is completed.
 - Square brackets "[]" are optional in a query returning an array (i.e. `.json.query.array[].property`) can also be `.json.query.array.property`.
