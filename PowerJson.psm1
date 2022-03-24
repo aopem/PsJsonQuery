@@ -29,8 +29,7 @@ class PowerJson
 
     [bool] $IgnoreError = $false
     [bool] $IgnoreOutput = $false
-    [string] hidden $JsonFilePath = [string]::Empty
-    [hashtable] hidden $JsonHashtable = [Ordered]@{}
+    [hashtable] hidden $JsonObject = $null
     [hashtable] hidden $PathsHashtable = $null
 
     PowerJson([string]$JsonFilePath)
@@ -40,8 +39,17 @@ class PowerJson
             throw "Error: $JsonFilePath is not a valid file path"
         }
 
-        $this.JsonFilePath = $JsonFilePath
-        $this.JsonHashtable = ConvertPSObjectToHashtable -InputObject (Get-Content $JsonFilePath | ConvertFrom-Json)
+        $this.JsonObject = Get-Content $JsonFilePath | ConvertFrom-Json
+    }
+
+    PowerJson([object]$JsonObject)
+    {
+        if ($null -eq $JsonObject)
+        {
+            throw "Error: JSON object passed is null"
+        }
+
+        $this.JsonObject = $JsonObject
     }
 
     [string] Query([string]$QueryPath)
@@ -64,11 +72,11 @@ class PowerJson
         $Value = ""
         try
         {
-            $Value = Invoke-Expression "`$this.JsonHashtable$PropertyPath"
+            $Value = Invoke-Expression "`$this.JsonObject$PropertyPath"
         }
         catch
         {
-            $ErrorMessage = "Cannot query $QueryPath when it does not already exist in `"$($this.JsonFilePath)`""
+            $ErrorMessage = "Cannot query $QueryPath when it does not already exist in the provided JSON"
 
             if (-not $this.IgnoreOutput)
             {
@@ -89,7 +97,7 @@ class PowerJson
         .DESCRIPTION
             Sets the value of $QueryPath to $Value. The Query path should be in same
             format as described for Query(). To see changes, must call Save() function to
-            write output to a file, otherwise they will only be present in $this.JsonHashtable.
+            write output to a file, otherwise they will only be present in $this.JsonObject.
         .PARAMETER QueryPath
             Path to query in same format as a typical jq query format (".field1.field2.field3")
         .PARAMETER Value
@@ -108,11 +116,11 @@ class PowerJson
 
         try
         {
-            Invoke-Expression "`$this.JsonHashtable$PropertyPath = $Value"
+            Invoke-Expression "`$this.JsonObject$PropertyPath = $Value"
         }
         catch
         {
-            $ErrorMessage = "Cannot set $QueryPath when it does not already exist in `"$($this.JsonFilePath)`""
+            $ErrorMessage = "Cannot set $QueryPath when it does not already exist in the provided JSON"
 
             if (-not $this.IgnoreOutput)
             {
@@ -154,109 +162,137 @@ class PowerJson
         #>
 
         $this.PathsHashtable = @{}
-        $this.PathsHelper($this.JsonHashtable, "")
+        $this.PathsHelper($this.JsonObject, "")
         return $this.PathsHashtable
+    }
+
+    [Collections.Generic.List[string]] GetPathsToValue($Value)
+    {
+        <#
+        .DESCRIPTION
+            Returns a list of all paths to the given value. The value provided must be a leaf
+            node of the JSON. Paths to keys will throw an error or give an incorrect result.
+        .PARAMETER Value
+            Value to obtain the paths to
+        .EXAMPLE
+            $Paths = $Jq.GetPathsToValue("myValue")
+        #>
+
+        # fill out $this.PathsHashtable
+        $this.Paths()
+
+        $MatchedPaths = [Collections.Generic.List[string]]::new()
+        foreach ($Item in $this.PathsHashtable.GetEnumerator())
+        {
+            if (($null -eq $Item.Value) -or ($null -eq $Value))
+            {
+                if ($Item.Value -eq $Value)
+                {
+                    $MatchedPaths.Add($Item.Name)
+                }
+                continue
+            }
+
+            # value is a match if $Item.Value is equal AND of the same type
+            if (($Item.Value.GetType().Name -eq $Value.GetType().Name) -and ($Item.Value -eq $Value))
+            {
+                $MatchedPaths.Add($Item.Name)
+            }
+        }
+
+        if ($MatchedPaths.Count -eq 0)
+        {
+            $ErrorMessage = "Could not find a path to value: $Value in the provided JSON"
+
+            if (-not $this.IgnoreOutput)
+            {
+                Write-Verbose -Verbose $ErrorMessage
+            }
+
+            if (-not $this.IgnoreError)
+            {
+                throw $ErrorMessage
+            }
+        }
+
+        return $MatchedPaths
     }
 
     [void] Save([string]$OutputFilePath)
     {
         <#
         .DESCRIPTION
-            Saves the contents of $this.JsonHashtable to a $OutputFilePath
+            Saves the contents of $this.JsonObject to a $OutputFilePath
         .PARAMETER OutputFilePath
-            Path to output $this.JsonHashtable as JSON to
+            Path to output $this.JsonObject as JSON to
         .EXAMPLE
             $PJson.SetPath(".root.array[0].property", 0)
             $PJson.Save("example.modified.json")
         .NOTES
-            $this.JsonHashtable is unordered so the output will contain all the same inputs/any updates
+            $this.JsonObject is unordered so the output will contain all the same inputs/any updates
             that have been made using SetPath() or manually, but will be formatted differently. So, while
             the output file will look different, the contained information is not.
         #>
 
-        $this.JsonHashtable | ConvertTo-Json -Depth 99 | Out-File -FilePath $OutputFilePath -Encoding "ASCII"
+        $this.JsonObject | ConvertTo-Json -Depth 99 | Out-File -FilePath $OutputFilePath -Encoding "ASCII"
     }
 
-    [void] hidden PathsHelper([hashtable]$JsonHashtable, [string]$Path)
+    [void] hidden PathsHelper($JsonObject, [string]$Path)
     {
         <#
         .DESCRIPTION
-            Performs a recursive depth-first search of $JsonHashtable to obtain all leaf nodes and their paths.
-            Essentially looks at each Key in the $JsonHashtable passed to the function. If the key is not
-            a hashtable or is an empty hashtable, then it is added to $this.PathsHashtable in the format
-            described in Paths(). Arrays are a special case, because they must be processed using their
-            indices instead of keys and may potentially contain more hashtables. Their elements are
-            treated the same way as previously described, unless they contain a hashtable. In which case
-            they are traversed to continue the DFS until leaf nodes are reached.
+            Performs a recursive depth-first search of $JsonObject to obtain all leaf nodes and their paths.
+            Essentially looks at each NoteProperty in the $JsonObject passed to the function. If the object
+            does not contain any note properties, then it is a leaf and is added to $this.PathsHashtable
+            in the format described in Paths(). [System.Object[]] is a special case, because these arrays
+            must be processed using their indices instead of properties and may potentially contain more
+            objects with note properties. Their elements are all inspected recursively for note properties
+            until leaf nodes are reached.
 
             The Path to each key is constructed with each function call by adding the key every time in
-            Path + ".Key" format and appending the index ($Path + "[$index]") when necessary.
-        .PARAMETER JsonHashtable
-            Hashtable that is being traversed to find paths to leaf nodes, leaf node values
+            "Path.Key" format and appending the index ("$Path[$index]") when necessary.
+        .PARAMETER JsonObject
+            JSON object that is being traversed to find paths to leaf nodes, leaf node values
         .PARAMETER Path
             Path that is appended to with each call of this function. Starts as ""
         #>
 
-        foreach ($Key in $JsonHashtable.Keys)
+        # in case an object has a null value, which would fail
+        # the operation to obtain the $NoteProperties
+        if ($null -eq $JsonObject)
         {
-            $Value = $JsonHashtable[$Key]
-            $NextPath = $Path + "." + $Key
+            $this.PathsHashtable[$Path] = $JsonObject
+            return
+        }
 
-            # will generally add to $PathsHashtable if $Value is not a hashtable type
-            # or if $Value is an empty hashtable
-            if ($Value -isnot [hashtable] -or ($Value -is [hashtable] -and $Value.Count -eq 0))
+        $NoteProperties = $JsonObject | Get-Member -MemberType NoteProperty | Select-Object -Property Name
+
+        # if no note properties, add to hashtable and return since this is a leaf node
+        if ($null -eq $NoteProperties)
+        {
+            $this.PathsHashtable[$Path] = $JsonObject
+            return
+        }
+
+        foreach ($Property in $NoteProperties)
+        {
+            $Name = $Property.Name
+            $Value = $JsonObject.$Name
+
+            # inspect recursively
+            # if array, process path using proper indexing
+            if ($Value -is [System.Object[]])
             {
-                # special case if the $Value is an array:
-                # need to make sure that no array elements are hashtables that continue the JSON tree
-                # and need to build path with array index instead of key name
-                if ($Value -is [array] -and $this.ArrayContainsType($Value, [hashtable]))
+                for ($i = 0; $i -lt $Value.Length; $i++)
                 {
-                    for ($i = 0; $i -lt $Value.Length; $i++)
-                    {
-                        $IndexedPath = $NextPath + "[$i]"
-                        if ($Value[$i] -is [hashtable])
-                        {
-                            $NextHashtable = $Value[$i]
-                            $this.PathsHelper($NextHashtable, $IndexedPath)
-                        }
-                        else
-                        {
-                            $this.PathsHashtable[$IndexedPath] = $Value
-                        }
-                    }
-                }
-                else
-                {
-                    $this.PathsHashtable[$NextPath] = $Value
+                    $this.PathsHelper($Value[$i], "$Path.$Name[$i]")
                 }
             }
             else
             {
-                $NextHashtable = $Value
-                $this.PathsHelper($NextHashtable, $NextPath)
+                $this.PathsHelper($Value, "$Path.$Name")
             }
         }
-    }
-
-    [bool] hidden ArrayContainsType([array]$Array, [type]$Type)
-    {
-        <#
-        .DESCRIPTION
-            Checks if $Array contains $Type.
-        .PARAMETER Array
-            array to search for $Type
-        .PARAMETER Type
-            type to find in $Array
-        #>
-
-        foreach ($Item in $Array)
-        {
-            if ($Item -is $Type)
-            {
-                return $true
-            }
-        }
-        return $false
     }
 
     [string] hidden ParseQueryPath([string]$QueryPath)
@@ -282,56 +318,4 @@ class PowerJson
             return $QueryPath.Replace("[]", "")
         }
     }
-}
-
-function ConvertPSObjectToHashtable
-{
-    <#
-    .DESCRIPTION
-        Modified from https://stackoverflow.com/questions/40495248/create-hashtable-from-json
-        answer by "Esten Rye". Will convert a PowerShell object (ex. JSON text converted to an
-        object using ConvertTo-Json) to a hashtable. If using PowerShell 7+, use:
-        ConvertTo-Json -AsHashtable
-    .PARAMETER InputObject
-        A PowerShell object (ex. JSON object obtained using ConvertFrom-Json cmdlet)
-    .EXAMPLE
-        $Hashtable = ConvertPSObjectToHashtable -InputObject (Get-Content $File | ConvertFrom-Json)
-    #>
-    param
-    (
-        [Parameter(Mandatory=$true)]
-        [Object]$InputObject
-    )
-
-    $Result = $null
-    if ($InputObject -is [System.Management.Automation.PSCustomObject])
-    {
-        $Result = [Ordered]@{}
-        foreach ($Property in $InputObject.PSObject.Properties)
-        {
-            $Result[$Property.Name] = ConvertPSObjectToHashtable -InputObject $Property.Value
-        }
-    }
-    elseif ($InputObject -is [System.Object[]] -and $InputObject.Count -gt 1)
-    {
-        $List = [System.Collections.ArrayList]::new()
-        foreach ($Element in $InputObject)
-        {
-            $List.Add((ConvertPSObjectToHashtable -InputObject $Element)) | Out-Null
-        }
-        $Result = $List
-    }
-    elseif ($InputObject -is [System.Object[]] -and $InputObject.Count -le 1)
-    {
-        # special case for 1 and 0 element arrays - PowerShell will enumerate these objects
-        # despite their [System.Object[]] type and create incorrect JSON when converting back
-        # to JSON, which is why these values must be saved as shown below
-        $Result = , @($InputObject)
-    }
-    else
-    {
-        $Result = $InputObject
-    }
-
-    return $Result
 }

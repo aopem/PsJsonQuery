@@ -3,9 +3,8 @@
 The PowerJson class can be used when working on a system that does not support jq for windows, but jq support is necessary or helpful.
 This class functions similarly to jq for windows, but with a few differences:
 
-- While PowerJson does use an ordered hashtable internally, output JSON from `Save()` is usually **NOT** in the same format as input JSON
-  and will be out of order at the topmost level. This is why output is usually saved in a different file from the input file.
-- Changes made using `SetPath()` can be seen immediately if calling the `Paths()` function, but will not be outputted to a file until
+- PowerJson typically has 2 space tabs instead of 4. This is why output is usually saved in a different file from the input file.
+- Changes made using `SetPath()` can be seen immediately if calling a PowerJson function, but will not be outputted to a file until
   a `Save()` call is completed.
 - Square brackets "[]" are optional in a query returning an array (i.e. `.json.query.array[].property`) can also be `.json.query.array.property`.
 - Queries output in JSON format, so `ConvertFrom-Json` should be used before doing any object manipulation after a query.
@@ -36,6 +35,9 @@ Instantiate PowerJson object:
 
 ```PowerShell
 $PJson = [PowerJson]::new("example.json")
+# or
+$Object = Get-Content "example.json" | ConvertFrom-Json
+$PJson = [PowerJson]::new($Object)
 ```
 
 Obtain a specific setting:
@@ -183,4 +185,16 @@ $PJson.Save("file.modified.json")
         ]
     }
 }
+```
+
+Obtain all paths to a value:
+
+```PowerShell
+$Paths = $Jq.GetPathsToValue("arrayLeafValue")
+```
+
+**Returns**:
+
+```PowerShell
+$Paths[0] = ".root.array[0].arrayLeaf"
 ```
