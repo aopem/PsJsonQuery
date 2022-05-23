@@ -9,10 +9,10 @@
 @{
 
 # Script module or binary module file associated with this manifest.
-RootModule = 'PwshQuery'
+RootModule = 'PwshQuery.psm1'
 
 # Version number of this module.
-ModuleVersion = '0.0.3'
+ModuleVersion = '0.0.9'
 
 # Supported PSEditions
 # CompatiblePSEditions = @()
@@ -139,4 +139,3 @@ PrivateData = @{
 # DefaultCommandPrefix = ''
 
 }
-
