@@ -1,11 +1,10 @@
-# PowerJson
+# PwshQuery
 
-The PowerJson class can be used when working on a system that does not support jq for windows, but jq support is necessary or helpful.
-This class functions similarly to jq for windows, but with a few differences:
+PwshQuery is a PowerShell native JSON query class that can be used to simplify working with JSON in PowerShell. The `ConvertFrom-Json` cmdlet makes some operations difficult by returning JSON as an object type. As a result, PwshQuery was created to help in situations where simply using the JSON object returned by `ConvertFrom-Json` can be difficult. Additionally, this class is especially useful when working in an environment where P is inaccessible, but PowerShell is. PwshQuery functions similarly to P, but with a few differences:
 
-- PowerJson typically has 2 space tabs instead of 4. This is why output is usually saved in a different file from the input file.
-- Changes made using `SetPath()` can be seen immediately if calling a PowerJson function, but will not be outputted to a file until
-  a `Save()` call is completed.
+- Queries follow the same basic format as [P filters](https://stedolan.github.io/P/manual/#Basicfilters).
+- PwshQuery typically has 2 space tabs instead of 4. This is why output is usually saved in a different file from the input file.
+- Any changes made using PwshQuery can be seen immediately if calling a PwshQuery method, but will not be outputted to a file until a `Save()` call is completed.
 - Square brackets "[]" are optional in a query returning an array (i.e. `.json.query.array[].property`) can also be `.json.query.array.property`.
 - Queries output in JSON format, so `ConvertFrom-Json` should be used before doing any object manipulation after a query.
 
@@ -31,19 +30,19 @@ Using sample JSON for `example.json`:
 }
 ```
 
-Instantiate PowerJson object:
+Instantiate PwshQuery object:
 
 ```PowerShell
-$PJson = [PowerJson]::new("example.json")
+$Pq = [PwshQuery]::new("example.json")
 # or
 $Object = Get-Content "example.json" | ConvertFrom-Json
-$PJson = [PowerJson]::new($Object)
+$Pq = [PwshQuery]::new($Object)
 ```
 
 Obtain a specific setting:
 
 ```PowerShell
-$PJson.Query(".root.leaf")
+$Pq.Query(".root.leaf")
 ```
 
 **Returns**:
@@ -58,7 +57,7 @@ Obtain a JSON object:
 $Query = ".root.array"
 # or
 $Query = ".root.array[]"
-$PJson.Query($Query)
+$Pq.Query($Query)
 ```
 
 **Returns**:
@@ -80,7 +79,7 @@ $PJson.Query($Query)
 Obtain an array element:
 
 ```PowerShell
-$PJson.Query(".root.array[0]")
+$Pq.Query(".root.array[0]")
 ```
 
 **Returns**:
@@ -98,7 +97,7 @@ Obtain an array element by property value (as an object):
 $Query = ".root.array"
 # or
 $Query = ".root.array[]"
-$Element = $PJson.Query($Query) | ConvertFrom-Json | Where-Object -Property property -EQ "value"
+$Element = $Pq.Query($Query) | ConvertFrom-Json | Where-Object -Property property -EQ "value"
 ```
 
 **Returns**:
@@ -114,7 +113,7 @@ Obtain an array element by property value (as JSON):
 $Query = ".root.array"
 # or
 $Query = ".root.array[]"
-$property = $PJson.Query($Query) | ConvertFrom-Json | Where-Object -Property property -EQ "value" | ConvertTo-Json -Depth 99
+$property = $Pq.Query($Query) | ConvertFrom-Json | Where-Object -Property property -EQ "value" | ConvertTo-Json -Depth 99
 ```
 
 **Returns**:
@@ -132,7 +131,7 @@ Filter array elements by property:
 $Query = ".root.array.property"
 # or
 $Query = ".root.array[].property"
-$Property = $Jq.Query($Query)
+$Property = $P.Query($Query)
 ```
 
 **Returns**:
@@ -147,7 +146,7 @@ $Property = $Jq.Query($Query)
 Obtain paths to all leaf nodes, value of each leaf node in a hashtable:
 
 ```PowerShell
-$PathsHashtable = $PJson.Paths()
+$PathsHashtable = $Pq.Paths()
 ```
 
 **Returns** hashtable in the following key, value format:
@@ -163,8 +162,8 @@ $PathsHashtable[".root.array[1].property"] = "anotherValue"
 Change the value of a path, then get updated JSON:
 
 ```PowerShell
-$PJson.SetPath(".root.leaf", 999)
-$PJson.Save("file.modified.json")
+$Pq.SetPath(".root.leaf", 999)
+$Pq.Save("file.modified.json")
 ```
 
 **Returns**:
@@ -190,7 +189,7 @@ $PJson.Save("file.modified.json")
 Obtain all paths to a value:
 
 ```PowerShell
-$Paths = $Jq.GetPathsToValue("arrayLeafValue")
+$Paths = $Pq.GetPathsToValue("arrayLeafValue")
 ```
 
 **Returns**:

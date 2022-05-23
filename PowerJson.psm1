@@ -1,4 +1,4 @@
-class PowerJson
+class PwshQuery
 {
     <#
     .DESCRIPTION
@@ -8,23 +8,23 @@ class PowerJson
         ".array.query[0]" format.
     .EXAMPLE
         # executing queries on an example.json
-        $PJson = [PowerJson]::new("example.json")
-        $Array = $PJson.Query(".root.array[1]")
-        $LeafNode = $PJson.Query(".root.leafNode")
+        $Pq = [PwshQuery]::new("example.json")
+        $Array = $Pq.Query(".root.array[1]")
+        $LeafNode = $Pq.Query(".root.leafNode")
 
         # get hashtable of leaf node paths (hashtable keys) and their values (hashtable values)
-        $PathsHashtable = $PJson.Paths()
+        $PathsHashtable = $Pq.Paths()
 
         # set a path and then save change to an output file called "example.modified.json"
         # the path being set must already exist in example.json for success
-        $PJson.SetPath(".my.path.here", "newValue")
-        $PJson.Save("example.modified.json")
+        $Pq.SetPath(".my.path.here", "newValue")
+        $Pq.Save("example.modified.json")
     .NOTES
         JSON is output in a different order than the input, which is why save typically
         uses a different output file from the same input file.
 
-        Errors from functions can be ignored by setting $PJson.IgnoreError = $true.
-        Error/warning message output can be ignored by setting $PJson.IgnoreOutput = $true.
+        Errors from functions can be ignored by setting $Pq.IgnoreError = $true.
+        Error/warning message output can be ignored by setting $Pq.IgnoreOutput = $true.
     #>
 
     [bool] $IgnoreError = $false
@@ -32,7 +32,7 @@ class PowerJson
     [hashtable] hidden $JsonObject = $null
     [hashtable] hidden $PathsHashtable = $null
 
-    PowerJson([string]$JsonFilePath)
+    PwshQuery([string]$JsonFilePath)
     {
         if (-not (Test-Path $JsonFilePath))
         {
@@ -42,7 +42,7 @@ class PowerJson
         $this.JsonObject = Get-Content $JsonFilePath | ConvertFrom-Json
     }
 
-    PowerJson([object]$JsonObject)
+    PwshQuery([object]$JsonObject)
     {
         if ($null -eq $JsonObject)
         {
@@ -64,7 +64,7 @@ class PowerJson
         .PARAMETER QueryPath
             Path to query in same format as a typical jq query (".field1.field2.field3")
         .EXAMPLE
-            $ArrayJSON = $PJson.Query(".root.array[0]")
+            $ArrayJSON = $Pq.Query(".root.array[0]")
         #>
 
         $PropertyPath = $this.ParseQueryPath($QueryPath)
@@ -103,8 +103,8 @@ class PowerJson
         .PARAMETER Value
             Value to set $QueryPath to
         .EXAMPLE
-            $PJson.SetPath(".root.array[0].faultDomains", 0)
-            $PJson.Save("example.modified.json")
+            $Pq.SetPath(".root.array[0].faultDomains", 0)
+            $Pq.Save("example.modified.json")
         #>
 
         # add quotes if string
@@ -151,7 +151,7 @@ class PowerJson
             $this.PathsHashtable["".root.leafnode1"] = 0
         .EXAMPLE
             # add 1 to all integer values in hashtable
-            $PathsHashtable = $PJson.Paths()
+            $PathsHashtable = $Pq.Paths()
             foreach ($Path in $PathsHashtable.Keys)
             {
                 if ($PathsHashtable[$Path] -is [int])
@@ -226,8 +226,8 @@ class PowerJson
         .PARAMETER OutputFilePath
             Path to output $this.JsonObject as JSON to
         .EXAMPLE
-            $PJson.SetPath(".root.array[0].property", 0)
-            $PJson.Save("example.modified.json")
+            $Pq.SetPath(".root.array[0].property", 0)
+            $Pq.Save("example.modified.json")
         .NOTES
             $this.JsonObject is unordered so the output will contain all the same inputs/any updates
             that have been made using SetPath() or manually, but will be formatted differently. So, while
