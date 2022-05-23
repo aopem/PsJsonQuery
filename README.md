@@ -8,6 +8,16 @@ PwshQuery is a PowerShell native JSON query class that can be used to simplify w
 - Square brackets "[]" are optional in a query returning an array (i.e. `.json.query.array[].property`) can also be `.json.query.array.property`.
 - Queries output in JSON format, so `ConvertFrom-Json` should be used before doing any object manipulation after a query.
 
+## Setup
+
+```PowerShell
+Install-Module PwshQuery
+Import-Module PwshQuery
+$Pq = New-PwshQuery -JsonFilePath "example.json"
+```
+
+> NOTE: After Installation if the module throws an error on first import, run `Import-Module PwshQuery` again, which should fix the issue.
+
 ## Example Usage Cases
 
 Using sample JSON for `example.json`:
