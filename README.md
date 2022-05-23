@@ -39,6 +39,15 @@ $Object = Get-Content "example.json" | ConvertFrom-Json
 $Pq = [PwshQuery]::new($Object)
 ```
 
+Instantiate PwshQuery object with `New-PwshQuery`:
+
+```PowerShell
+$Pq = New-PwshQuery -JsonFilePath "example.json"
+# or
+$Object = Get-Content "example.json" | ConvertFrom-Json
+$Pq = New-PwshQuery -JsonFileObject $Object
+```
+
 Obtain a specific setting:
 
 ```PowerShell

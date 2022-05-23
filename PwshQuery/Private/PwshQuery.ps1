@@ -29,7 +29,7 @@ class PwshQuery
 
     [bool] $IgnoreError = $false
     [bool] $IgnoreOutput = $false
-    [hashtable] hidden $JsonObject = $null
+    [object] hidden $JsonObject = $null
     [hashtable] hidden $PathsHashtable = $null
 
     PwshQuery([string]$JsonFilePath)
@@ -80,7 +80,7 @@ class PwshQuery
 
             if (-not $this.IgnoreOutput)
             {
-                Write-Verbose -Verbose $ErrorMessage
+                Write-Verbose -Message $ErrorMessage -Verbose
             }
 
             if (-not $this.IgnoreError)
@@ -124,7 +124,7 @@ class PwshQuery
 
             if (-not $this.IgnoreOutput)
             {
-                Write-Verbose -Verbose $ErrorMessage
+                Write-Verbose -Message $ErrorMessage -Verbose
             }
 
             if (-not $this.IgnoreError)
@@ -206,7 +206,7 @@ class PwshQuery
 
             if (-not $this.IgnoreOutput)
             {
-                Write-Verbose -Verbose $ErrorMessage
+                Write-Verbose -Message $ErrorMessage -Verbose
             }
 
             if (-not $this.IgnoreError)
