@@ -4,7 +4,7 @@
 #>
 
 # Source all of the public functions for export
-$PublicFunctions = [System.IO.Path]::Combine($PSScriptRoot, "Public", "*.ps1")
+$PublicFunctions = Get-ChildItem -Path ([System.IO.Path]::Combine($PSScriptRoot, "Public", "*.ps1"))
 foreach ($Function in $PublicFunctions)
 {
     . $Function.FullName
