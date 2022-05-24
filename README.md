@@ -1,11 +1,11 @@
 # PwshQuery
 
-PwshQuery is a PowerShell native JSON query class that can be used to simplify working with JSON in PowerShell. The `ConvertFrom-Json` cmdlet makes some operations difficult by returning JSON as an object type. As a result, PwshQuery was created to help in situations where simply using the JSON object returned by `ConvertFrom-Json` can be difficult. Additionally, this class is especially useful when working in an environment where jq is inaccessible, but PowerShell is. PwshQuery functions similarly to jq, but with a few differences:
+PwshQuery is a PowerShell native JSON query class that can be used to simplify working with JSON in PowerShell. The `ConvertFrom-Json` cmdlet makes some operations difficult by returning JSON as an object type. As a result, PwshQuery was created to help in situations where simply using the JSON object returned by `ConvertFrom-Json` can be difficult. Additionally, this class is especially useful when working in an environment where jq is inaccessible, but PowerShell is not. PwshQuery functions similarly to jq, but with a few differences:
 
 - Queries follow the same basic format as [jq filters](https://stedolan.github.io/jq/manual/#Basicfilters).
 - PwshQuery typically has 2 space tabs instead of 4. This is why output is usually saved in a different file from the input file.
 - Any changes made using PwshQuery can be seen immediately if calling a PwshQuery method, but will not be outputted to a file until a `Save()` call is completed.
-- Square brackets "[]" are optional in a query returning an array (i.e. `.json.query.array[].property`) can also be `.json.query.array.property`.
+- Square brackets "[]" are optional in a query returning an array (i.e. `.json.query.array[].property` can also be `.json.query.array.property`).
 - Queries output in JSON format, so `ConvertFrom-Json` should be used before doing any object manipulation after a query.
 
 ## Setup
