@@ -1,0 +1,15 @@
+{
+    "root": {
+        "leaf": "leafValue",
+        "array": [
+            {
+                "arrayLeaf": "arrayLeafValue",
+                "property": "value"
+            },
+            {
+                "arrayInt": 100,
+                "property": "anotherValue"
+            }
+        ]
+    }
+}

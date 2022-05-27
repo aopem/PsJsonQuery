@@ -67,28 +67,67 @@ class PwshQuery
             $ArrayJSON = $Pq.Query(".root.array[0]")
         #>
 
+        # validate path, then parse
+        $this.ValidateQueryPath($QueryPath)
         $PropertyPath = $this.ParseQueryPath($QueryPath)
 
+        # accessing property that does not exist will not throw error,
+        # which is why if statement is used instead of try/catch
         $Value = ""
-        try
+        if (-not $this.Contains($QueryPath))
         {
+            $this.LogError("Cannot query $QueryPath when it does not already exist in the provided JSON")
+        }
+        else
+        {
+            # get value from property
             $Value = Invoke-Expression "`$this.JsonObject$PropertyPath"
         }
-        catch
-        {
-            $ErrorMessage = "Cannot query $QueryPath when it does not already exist in the provided JSON"
 
-            if (-not $this.IgnoreOutput)
+        return $Value | ConvertTo-Json -Depth 99
+    }
+
+    [bool] Contains([string]$QueryPath)
+    {
+        <#
+        .DESCRIPTION
+            Returns true if $QueryPath exists in the JSON provided to PwshQuery.
+        .PARAMETER QueryPath
+            Path to query in same format as a typical jq query (".field1.field2.field3")
+        .EXAMPLE
+            if ($Pq.Contains(".root.array[0]"))
             {
-                Write-Verbose -Message $ErrorMessage -Verbose
+                ...
             }
+        #>
 
-            if (-not $this.IgnoreError)
+        # validate path, then parse
+        $this.ValidateQueryPath($QueryPath)
+        $PropertyPath = $this.ParseQueryPath($QueryPath)
+        if ($PropertyPath -eq "")
+        {
+            return $true
+        }
+
+        # Ignore first ".", so $Properties array does not contain an extra initial empty element
+        $Properties = $PropertyPath.Substring(1).Split(".")
+        if ($Properties.Count -eq 0)
+        {
+            return $true
+        }
+
+        $CurrentObject = $this.JsonObject
+        foreach ($Property in $Properties)
+        {
+            # Assert that the current property exists
+            $CurrentObject = Invoke-Expression "`$CurrentObject.$Property"
+            if ($null -eq $CurrentObject)
             {
-                throw $ErrorMessage
+                return $false
             }
         }
-        return $Value | ConvertTo-Json -Depth 99
+
+        return $true
     }
 
     [void] SetPath([string]$QueryPath, $Value)
@@ -112,6 +151,9 @@ class PwshQuery
         {
             $Value = '"' + $Value + '"'
         }
+
+        # validate path, then parse
+        $this.ValidateQueryPath($QueryPath)
         $PropertyPath = $this.ParseQueryPath($QueryPath)
 
         try
@@ -120,17 +162,7 @@ class PwshQuery
         }
         catch
         {
-            $ErrorMessage = "Cannot set $QueryPath when it does not already exist in the provided JSON"
-
-            if (-not $this.IgnoreOutput)
-            {
-                Write-Verbose -Message $ErrorMessage -Verbose
-            }
-
-            if (-not $this.IgnoreError)
-            {
-                throw $ErrorMessage
-            }
+            $this.LogError("Cannot set $QueryPath when it does not already exist in the provided JSON")
         }
     }
 
@@ -202,17 +234,7 @@ class PwshQuery
 
         if ($MatchedPaths.Count -eq 0)
         {
-            $ErrorMessage = "Could not find a path to value: $Value in the provided JSON"
-
-            if (-not $this.IgnoreOutput)
-            {
-                Write-Verbose -Message $ErrorMessage -Verbose
-            }
-
-            if (-not $this.IgnoreError)
-            {
-                throw $ErrorMessage
-            }
+            $this.LogError("Could not find a path to value: $Value in the provided JSON")
         }
 
         return $MatchedPaths
@@ -295,7 +317,31 @@ class PwshQuery
         }
     }
 
-    [string] hidden ParseQueryPath([string]$QueryPath)
+    [void] hidden LogError([string]$Message)
+    {
+        <#
+        .DESCRIPTION
+            Description
+        .PARAMETER Message
+            ParameterName described and example/default values here
+        .EXAMPLE
+            FunctionName example usage here
+        #>
+
+        $ErrorMessage = "[ERROR] $Message"
+
+        if (-not $this.IgnoreOutput)
+        {
+            Write-Verbose -Message $ErrorMessage -Verbose
+        }
+
+        if (-not $this.IgnoreError)
+        {
+            throw $ErrorMessage
+        }
+    }
+
+    [void] hidden ValidateQueryPath([string]$QueryPath)
     {
         <#
         .DESCRIPTION
@@ -307,15 +353,28 @@ class PwshQuery
 
         if (-not $QueryPath.StartsWith("."))
         {
-            throw "Query `"$QueryPath`" must start with a `".`""
+            $this.LogError("Query `"$QueryPath`" must start with a `".`"")
         }
-        elseif ($QueryPath -eq ".")
+    }
+
+    [string] hidden ParseQueryPath([string]$QueryPath)
+    {
+        <#
+        .DESCRIPTION
+            Remove any instances of [], and otherwise use $QueryPath to directly to access
+            hashtable elements.
+        .PARAMETER QueryPath
+            Path to parse for key values
+        #>
+
+        $ParsedPath = ""
+
+        # if $QueryPath == ".", then return an empty string
+        if ($QueryPath -ne ".")
         {
-            return ""
+            $ParsedPath = $QueryPath.Replace("[]", "")
         }
-        else
-        {
-            return $QueryPath.Replace("[]", "")
-        }
+
+        return $ParsedPath
     }
 }
