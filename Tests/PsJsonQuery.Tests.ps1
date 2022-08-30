@@ -29,7 +29,8 @@ BeforeAll {
     $SampleJsonObject = Get-Content $SampleJsonFilePath | ConvertFrom-Json
 
     # Import module
-    Import-Module .\PsJsonQuery.psd1 -Force
+    $Module = Resolve-Path -Path ([System.IO.Path]::Combine($PSScriptRoot, "..", "PsJsonQuery", "PsJsonQuery.psd1"))
+    Import-Module $Module -Force
 }
 
 AfterAll {
