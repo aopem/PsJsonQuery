@@ -1,5 +1,7 @@
 # PsJsonQuery
 
+![pester-unit-tests](https://github.com/aopem/PsJsonQuery/actions/workflows/pester-unit-tests.yml/badge.svg)
+
 PsJsonQuery is a PowerShell native JSON query class that can be used to simplify working with JSON in PowerShell. The `ConvertFrom-Json` cmdlet makes some operations difficult by returning JSON as an object type. As a result, PsJsonQuery was created to help in situations where simply using the JSON object returned by `ConvertFrom-Json` can be difficult. Additionally, this class is especially useful when working in an environment where jq is inaccessible, but PowerShell is not. PsJsonQuery functions similarly to jq, but with a few differences:
 
 - Queries follow the same basic format as [jq filters](https://stedolan.github.io/jq/manual/#Basicfilters).

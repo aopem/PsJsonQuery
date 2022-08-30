@@ -1,4 +1,4 @@
-name: Run Pester Unit Tests
+name: Pester Unit Tests
 
 # run on pull requests to main, or manually
 on:
