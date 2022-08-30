@@ -29,19 +29,18 @@ BeforeAll {
     $SampleJsonObject = Get-Content $SampleJsonFilePath | ConvertFrom-Json
 
     # Import module
-    Import-Module ([System.IO.Path]::Combine($PSScriptRoot, "..", "PsJsonQuery.psd1"))
+    Import-Module .\PsJsonQuery.psd1 -Force
 }
 
-# AfterAll {
-#     Remove-Item -Path $SampleJsonFilePath -Force
-# }
+AfterAll {
+    Remove-Item -Path $SampleJsonFilePath -Force
+}
 
 Describe "New-PsJsonQuery" {
     It "Can create a PsJsonQuery object from JSON file with default settings" {
         $Pq = New-PsJsonQuery -JsonFilePath $SampleJsonFilePath
 
         $Pq | Should -Not -BeNullOrEmpty
-        $Pq | Should -BeOfType PsJsonQuery
         $Pq.IgnoreError | Should -BeFalse
         $Pq.IgnoreOutput | Should -BeFalse
     }
@@ -50,7 +49,6 @@ Describe "New-PsJsonQuery" {
         $Pq = New-PsJsonQuery -JsonObject $SampleJsonObject
 
         $Pq | Should -Not -BeNullOrEmpty
-        $Pq | Should -BeOfType PsJsonQuery
         $Pq.IgnoreError | Should -BeFalse
         $Pq.IgnoreOutput | Should -BeFalse
     }
@@ -116,21 +114,18 @@ Describe "PsJsonQuery" {
         $Pq.Query($Query) | Should -Be $ActualValue
     }
 
-    It "Throws on an invalid query" {
+    It "Throws on an invalid Query() operation" {
         $Query = ".invalid.query"
 
-        $Caught = $false
         try
         {
-            $output = $Pq.Query($Query)
-            Write-Host "out: $output"
+            $Pq.Query($Query)
         }
         catch
         {
-            $Caught = $true
+            return $true
         }
-
-        $Caught | Should -BeTrue
+        return $false
     }
 
     It "Can obtain the paths to all leaf nodes" {
@@ -149,5 +144,36 @@ Describe "PsJsonQuery" {
 
         $Paths.Count | Should -Be 1
         $Paths[0] | Should -Be ".root.array[0].arrayLeaf"
+    }
+
+    It "Can set a value" {
+        $Query = ".root.leaf"
+        $NewValue = "newLeafValue"
+
+        $Pq.SetPath($Query, $NewValue)
+        $Pq.Query($Query) | ConvertFrom-Json | Should -Be $NewValue
+    }
+
+    It "Can set an array element value" {
+        $Query = ".root.array[1]"
+        $NewValue = 123456
+
+        $Pq.SetPath($Query, $NewValue)
+        $Pq.Query($Query) | ConvertFrom-Json | Should -Be $NewValue
+    }
+
+    It "Throws on an invalid SetPath() operation" {
+        $Query = ".invalid.query"
+        $NewValue = "invalidValue"
+
+        try
+        {
+            $Pq.SetPath($Query, $NewValue)
+        }
+        catch
+        {
+            return $true
+        }
+        return $false
     }
 }

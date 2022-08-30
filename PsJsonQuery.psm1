@@ -336,7 +336,9 @@ class PsJsonQuery
 
         if (-not $QueryPath.StartsWith("."))
         {
-            throw "Query `"$QueryPath`" must start with a `".`""
+            $ErrorMessage = "Query `"$QueryPath`" must start with a `".`""
+            $this.HandleError($ErrorMessage)
+            return ""
         }
         elseif ($QueryPath -eq ".")
         {
@@ -362,6 +364,7 @@ class PsJsonQuery
 
         if (-not $this.IgnoreError)
         {
+            $ErrorActionPreference = "Stop"
             throw $ErrorMessage
         }
 

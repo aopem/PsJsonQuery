@@ -16,7 +16,13 @@ Import-Module PsJsonQuery
 $Pq = New-PsJsonQuery -JsonFilePath "example.json"
 ```
 
-> NOTE: After Installation if the module throws an error on first import, run `Import-Module PsJsonQuery` again, which should fix the issue.
+## Run Tests with Pester
+
+To test with Pester, from the repository root run:
+
+```PowerShell
+Invoke-Pester
+```
 
 ## Example Usage Cases
 
