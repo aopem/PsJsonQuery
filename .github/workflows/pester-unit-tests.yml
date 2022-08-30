@@ -1,0 +1,32 @@
+name: Run Pester Unit Tests
+
+# run on pull requests to main, or manually
+on:
+  pull_request:
+    branches:
+      - main
+
+  workflow_dispatch:
+
+jobs:
+  pester-windows:
+    runs-on: windows-latest
+    steps:
+      - name: Check out ${{ github.repository }}
+        uses: actions/checkout@v3
+
+      - name: ${{ runner.os }} - Invoke Pester Unit Tests
+        shell: pwsh
+        run: |
+          Invoke-Pester
+
+  pester-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out ${{ github.repository }}
+        uses: actions/checkout@v3
+
+      - name: ${{ runner.os }} - Invoke Pester Unit Tests
+        shell: pwsh
+        run: |
+          Invoke-Pester
